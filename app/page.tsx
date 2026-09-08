@@ -208,7 +208,7 @@ function SidebarNav({
   return (
     <>
       <div className="mb-9 px-2">
-        <img src="/logo-eiviplant.jpg" alt="Eiviplant" className="h-10 w-auto max-w-full object-contain object-left" />
+        <img src="/logo-eiviplant.jpg" alt="Eiviplant" className="h-14 w-full max-w-full rounded-xl object-contain object-left" />
       </div>
       <nav className="flex flex-col gap-1 overflow-y-auto">
         <p className="mb-2 px-3 text-[10px] font-semibold tracking-[0.16em] text-[#75917b]">GESTIÓN DE STOCK</p>
@@ -389,7 +389,7 @@ export default function Page() {
               >
                 <Menu className="size-5" />
               </button>
-              <img src="/logo-eiviplant.jpg" alt="Eiviplant" className="h-8 w-auto object-contain" />
+              <img src="/logo-eiviplant.jpg" alt="Eiviplant" className="h-10 max-w-[180px] flex-1 rounded-lg object-contain object-left" />
               <button
                 type="button"
                 onClick={() => action('No tienes notificaciones nuevas')}
