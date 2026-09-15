@@ -199,51 +199,6 @@ function SidebarNav({
   )
 }
 
-function MobileBottomNav({
-  active,
-  go,
-  onOpenMenu,
-}: {
-  active: string
-  go: (label: string) => void
-  onOpenMenu: () => void
-}) {
-  const tabs = [
-    ['Resumen', LayoutDashboard],
-    ['Existencias', Package],
-    ['Recepción', ScanLine],
-    ['Menú', Menu],
-  ] as const
-
-  const tourNavLabels = new Set(['Resumen', 'Existencias', 'Recepción'])
-
-  return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-[95] border-t border-[#e5e9e5] bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80 md:hidden"
-      style={{ paddingBottom: 'max(0.5rem, env(safe-area-inset-bottom))' }}
-    >
-      <div className="grid grid-cols-4">
-        {tabs.map(([label, Icon]) => {
-          const isMenu = label === 'Menú'
-          const isActive = !isMenu && active === label
-          return (
-            <button
-              key={label}
-              type="button"
-              onClick={() => (isMenu ? onOpenMenu() : go(label))}
-              {...(!isMenu && tourNavLabels.has(label) ? { 'data-tour-nav': label } : {})}
-              className={`flex min-h-[56px] flex-col items-center justify-center gap-0.5 px-1 py-2 text-[10px] font-medium touch-manipulation active:bg-[#f0f4f0] ${isActive ? 'text-[#316742]' : 'text-[#829187]'}`}
-            >
-              <Icon className="size-5" strokeWidth={isActive ? 2.25 : 2} />
-              <span>{label}</span>
-            </button>
-          )
-        })}
-      </div>
-    </nav>
-  )
-}
-
 export default function Page() {
   return (
     <AppPreferencesProvider>
@@ -346,8 +301,7 @@ function PageContent() {
     if (!tutorialActive) return
     const step = tutorialSteps[tutorialStep]
     if (!step) return
-    const inBottomNav = ['Resumen', 'Existencias', 'Recepción'].includes(step.section)
-    if (window.matchMedia('(max-width: 767px)').matches && !inBottomNav) setMobileOpen(true)
+    if (window.matchMedia('(max-width: 767px)').matches) setMobileOpen(true)
   }, [tutorialActive, tutorialStep])
 
   const openHelpTopic = (topic: HelpTopic) => {
@@ -504,7 +458,7 @@ function PageContent() {
 
           </header>
 
-          <div className="ep-density-pad px-5 py-7 pb-28 md:px-7 md:py-8 md:pb-8">
+          <div className="ep-density-pad px-5 py-7 md:px-7 md:py-8">
             {active === 'Resumen' && <Overview action={action} go={go} metrics={metrics} />}
             {active === 'Existencias' && (
               <Inventory
@@ -542,10 +496,8 @@ function PageContent() {
         </section>
       </div>
 
-      <MobileBottomNav active={active} go={go} onOpenMenu={() => setMobileOpen(true)} />
-
       {selected.length > 0 && (
-        <div className="fixed bottom-24 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-sm shadow-xl md:bottom-5">
+        <div className="fixed bottom-5 left-1/2 flex -translate-x-1/2 items-center gap-3 rounded-2xl border bg-white px-4 py-3 text-sm shadow-xl">
           <b>{selected.length} seleccionados</b>
           <button onClick={() => action('Existencias exportadas a CSV')} className="flex items-center gap-2 rounded-lg border px-3 py-2">
             <Download className="size-4" />
@@ -578,7 +530,7 @@ function PageContent() {
       />
 
       {notice && (
-        <div className="fixed bottom-24 right-5 z-10 flex items-center gap-3 rounded-xl bg-[#316742] px-4 py-3 text-sm text-white shadow-xl md:bottom-5">
+        <div className="fixed bottom-5 right-5 z-10 flex items-center gap-3 rounded-xl bg-[#316742] px-4 py-3 text-sm text-white shadow-xl">
           <CheckCircle2 className="size-4" />
           {notice}
           <button onClick={() => setNotice('')} aria-label="Cerrar aviso">
