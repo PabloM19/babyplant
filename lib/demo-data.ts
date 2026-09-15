@@ -1,3 +1,23 @@
+export type LocationZone = 'Interior' | 'Exterior' | 'Cuarentena'
+
+export type SupplierExtraRow = {
+  id: string
+  label: string
+  value: string
+}
+
+export type Supplier = {
+  id: string
+  name: string
+  city: string
+  updated: string
+  contactName: string
+  contactPhone: string
+  adminEmail: string
+  notes: string
+  extraRows: SupplierExtraRow[]
+}
+
 export type Procedencia = {
   id: string
   supplier: string
@@ -8,6 +28,8 @@ export type Procedencia = {
   immobilized: number
   lot: string
   entryDate: string
+  barcode?: string
+  phytosanitaryPassport?: string
 }
 
 export type Product = {
@@ -80,13 +102,13 @@ export type AppMetrics = {
     expiringDelta: StatDelta
     withdrawnDelta: StatDelta
   }
-  suppliers: { name: string; references: number; city: string; updated: string }[]
-  locations: { name: string; description: string; items: number; units: number }[]
+  suppliers: (Supplier & { references: number })[]
+  locations: { name: string; description: string; items: number; units: number; zone: LocationZone }[]
   tasks: { ocrLines: number; pendingMermas: number }
 }
 
 export const CATALOG_PRODUCT_NAMES = [
-  'Rosa mini roja',
+  'Rosal mini rojo',
   'Blaukorn Compo 5 kg',
   'Monstera Deliciosa',
   'Maceta clásica terracota 30 cm',
@@ -105,32 +127,131 @@ export const CATALOG_PRODUCT_NAMES = [
   'Orquídea Phalaenopsis',
 ] as const
 
-const SUPPLIER_META: Record<string, { city: string; updated: string }> = {
-  'Viveros del Levante': { city: 'Valencia', updated: 'Actualizado hoy' },
-  'Flora Mediterránea': { city: 'Alicante', updated: 'Actualizado ayer' },
-  'Distribuciones Hortícolas': { city: 'Ibiza', updated: 'Actualizado hace 2 días' },
-  'Cerámica Garden': { city: 'Barcelona', updated: 'Actualizado hace 4 días' },
-  'AgroSupply Ibiza': { city: 'Ibiza', updated: 'Actualizado hace 3 días' },
-  'Viveros Can Marí': { city: 'Mallorca', updated: 'Actualizado hace 5 días' },
+export const suppliersCatalog: Supplier[] = [
+  {
+    id: 's-levante',
+    name: 'Viveros del Levante',
+    city: 'Valencia',
+    updated: 'Actualizado hoy',
+    contactName: 'Carmen López',
+    contactPhone: '+34 961 220 118',
+    adminEmail: 'albaranes@viveroslevante.es',
+    notes: 'Principal vivero de planta de exterior. Entregas martes y viernes.',
+    extraRows: [
+      { id: 'vl-1', label: 'Día de entrega', value: 'Martes y viernes, 7:30' },
+      { id: 'vl-2', label: 'Pedido mínimo', value: '1 palet o 150 €' },
+      { id: 'vl-3', label: 'Formato albarán', value: 'PDF con columnas Concepto / Cantidad / Unidad · prefijo VL-' },
+    ],
+  },
+  {
+    id: 's-flora',
+    name: 'Flora Mediterránea',
+    city: 'Alicante',
+    updated: 'Actualizado ayer',
+    contactName: 'Jordi Pons',
+    contactPhone: '+34 965 441 902',
+    adminEmail: 'admin@floramediterranea.es',
+    notes: 'Planta de interior, aromáticas y flor de temporada.',
+    extraRows: [
+      { id: 'fm-1', label: 'Día de entrega', value: 'Miércoles' },
+      { id: 'fm-2', label: 'Pedido mínimo', value: '80 uds. mixtas' },
+      { id: 'fm-3', label: 'Formato albarán', value: 'Excel/PDF con referencia FM y pasaporte en columna extra' },
+    ],
+  },
+  {
+    id: 's-horticolas',
+    name: 'Distribuciones Hortícolas',
+    city: 'Ibiza',
+    updated: 'Actualizado hace 2 días',
+    contactName: 'Neus Marí',
+    contactPhone: '+34 971 310 440',
+    adminEmail: 'facturacion@dhorticolas.es',
+    notes: 'Abonos, sustratos, riego y fitosanitarios. Recogida en almacén de Ibiza.',
+    extraRows: [
+      { id: 'dh-1', label: 'Recogida', value: 'Almacén Can Negre · previa llamada' },
+      { id: 'dh-2', label: 'Pedido mínimo', value: 'Sin mínimo en reposición semanal' },
+      { id: 'dh-3', label: 'Formato albarán', value: 'Prefijo DH- · cantidades a veces con decimales (20,00 ud)' },
+    ],
+  },
+  {
+    id: 's-ceramica',
+    name: 'Cerámica Garden',
+    city: 'Barcelona',
+    updated: 'Actualizado hace 4 días',
+    contactName: 'Paula Ribas',
+    contactPhone: '+34 933 118 220',
+    adminEmail: 'pedidos@ceramicagarden.com',
+    notes: 'Macetas y piedra decorativa. Palets mensuales.',
+    extraRows: [
+      { id: 'cg-1', label: 'Día de entrega', value: 'Un palet al mes, primer lunes' },
+      { id: 'cg-2', label: 'Rotura en transporte', value: 'Anotar en albarán; reposición en el siguiente envío' },
+    ],
+  },
+  {
+    id: 's-agro',
+    name: 'AgroSupply Ibiza',
+    city: 'Ibiza',
+    updated: 'Actualizado hace 3 días',
+    contactName: 'Toni Prats',
+    contactPhone: '+34 971 395 010',
+    adminEmail: 'admin@agrosupplyibiza.com',
+    notes: 'Consumibles de garden: abonos líquidos y sustratos de cactus.',
+    extraRows: [
+      { id: 'as-1', label: 'Contacto urgente', value: 'WhatsApp del comercial, mismo número' },
+      { id: 'as-2', label: 'Pedido mínimo', value: '6 bultos' },
+    ],
+  },
+  {
+    id: 's-canmari',
+    name: 'Viveros Can Marí',
+    city: 'Mallorca',
+    updated: 'Actualizado hace 5 días',
+    contactName: 'Miquel Canals',
+    contactPhone: '+34 971 620 774',
+    adminEmail: 'albaranes@canmari.es',
+    notes: 'Suculentas y cactus. Envío en ferry con preaviso de 48 h.',
+    extraRows: [
+      { id: 'cm-1', label: 'Transporte', value: 'Ferry Palma–Ibiza · preaviso 48 h' },
+      { id: 'cm-2', label: 'Pasaporte', value: 'Incluye pasaporte fitosanitario en cada lote M9–M11' },
+    ],
+  },
+]
+
+export function createEmptySupplier(): Supplier {
+  return {
+    id: `s-${Date.now()}`,
+    name: '',
+    city: '',
+    updated: 'Nuevo',
+    contactName: '',
+    contactPhone: '',
+    adminEmail: '',
+    notes: '',
+    extraRows: [{ id: `row-${Date.now()}`, label: '', value: '' }],
+  }
 }
 
-const LOCATION_META: Record<string, string> = {
-  'Invernadero A': 'Plantas de exterior y floración',
-  'Invernadero B': 'Plantas tropicales y de interior',
-  'Almacén principal': 'Macetas, abonos y accesorios',
-  'Cuarentena fitosanitaria': 'Stock inmovilizado en revisión',
+const LOCATION_META: Record<string, { description: string; zone: LocationZone }> = {
+  'Invernadero A': { description: 'Plantas de exterior y floración', zone: 'Exterior' },
+  'Invernadero B': { description: 'Plantas tropicales y de interior', zone: 'Interior' },
+  'Almacén principal': { description: 'Macetas, abonos y accesorios', zone: 'Interior' },
+  'Cuarentena fitosanitaria': { description: 'Stock inmovilizado en revisión', zone: 'Cuarentena' },
+}
+
+export function locationZone(location: string): LocationZone {
+  return LOCATION_META[location]?.zone ?? 'Interior'
 }
 
 export const products: Product[] = [
   {
     id: 'p1',
-    name: 'Rosa mini roja',
+    name: 'Rosal mini rojo',
     category: 'Plantas de exterior',
     location: 'Invernadero A',
     eiviplantCode: 'EIV-2026-0142',
     procedencias: [
-      { id: 'pr1', supplier: 'Viveros del Levante', cost: '2,40 €', margin: '45%', physical: 86, reserved: 9, immobilized: 0, lot: 'VL-8841', entryDate: '4 mar 2026' },
-      { id: 'pr2', supplier: 'Flora Mediterránea', cost: '2,15 €', margin: '52%', physical: 44, reserved: 3, immobilized: 2, lot: 'FM-2209', entryDate: '28 feb 2026' },
+      { id: 'pr1', supplier: 'Viveros del Levante', cost: '2,40 €', margin: '45%', physical: 86, reserved: 9, immobilized: 0, lot: 'VL-8841', entryDate: '4 mar 2026', barcode: '8437000142001', phytosanitaryPassport: 'ES-46-VL-0142' },
+      { id: 'pr2', supplier: 'Flora Mediterránea', cost: '2,15 €', margin: '52%', physical: 44, reserved: 3, immobilized: 2, lot: 'FM-2209', entryDate: '28 feb 2026', barcode: '8437000142002', phytosanitaryPassport: 'ES-03-FM-2209' },
     ],
   },
   {
@@ -140,8 +261,8 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0098',
     procedencias: [
-      { id: 'pr3', supplier: 'Distribuciones Hortícolas', cost: '18,50 €', margin: '28%', physical: 156, reserved: 14, immobilized: 0, lot: 'DH-5512', entryDate: '1 mar 2026' },
-      { id: 'pr4', supplier: 'AgroSupply Ibiza', cost: '17,90 €', margin: '32%', physical: 88, reserved: 4, immobilized: 0, lot: 'AS-1190', entryDate: '15 feb 2026' },
+      { id: 'pr3', supplier: 'Distribuciones Hortícolas', cost: '18,50 €', margin: '28%', physical: 156, reserved: 14, immobilized: 0, lot: 'DH-5512', entryDate: '1 mar 2026', barcode: '8437000098003' },
+      { id: 'pr4', supplier: 'AgroSupply Ibiza', cost: '17,90 €', margin: '32%', physical: 88, reserved: 4, immobilized: 0, lot: 'AS-1190', entryDate: '15 feb 2026', barcode: '8437000098004' },
     ],
   },
   {
@@ -151,7 +272,7 @@ export const products: Product[] = [
     location: 'Invernadero B',
     eiviplantCode: 'EIV-2026-0201',
     procedencias: [
-      { id: 'pr5', supplier: 'Viveros del Levante', cost: '48,00 €', margin: '38%', physical: 64, reserved: 8, immobilized: 0, lot: 'VL-9012', entryDate: '6 mar 2026' },
+      { id: 'pr5', supplier: 'Viveros del Levante', cost: '48,00 €', margin: '38%', physical: 64, reserved: 8, immobilized: 0, lot: 'VL-9012', entryDate: '6 mar 2026', barcode: '8437000201005', phytosanitaryPassport: 'ES-46-VL-0201' },
     ],
   },
   {
@@ -161,7 +282,7 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0067',
     procedencias: [
-      { id: 'pr6', supplier: 'Cerámica Garden', cost: '24,00 €', margin: '42%', physical: 412, reserved: 24, immobilized: 0, lot: 'CG-3301', entryDate: '20 feb 2026' },
+      { id: 'pr6', supplier: 'Cerámica Garden', cost: '24,00 €', margin: '42%', physical: 412, reserved: 24, immobilized: 0, lot: 'CG-3301', entryDate: '20 feb 2026', barcode: '8437000067006' },
     ],
   },
   {
@@ -171,7 +292,7 @@ export const products: Product[] = [
     location: 'Invernadero B',
     eiviplantCode: 'EIV-2026-0188',
     procedencias: [
-      { id: 'pr7', supplier: 'Flora Mediterránea', cost: '32,00 €', margin: '40%', physical: 0, reserved: 0, immobilized: 0, lot: 'FM-7780', entryDate: '10 ene 2026' },
+      { id: 'pr7', supplier: 'Flora Mediterránea', cost: '32,00 €', margin: '40%', physical: 0, reserved: 0, immobilized: 0, lot: 'FM-7780', entryDate: '10 ene 2026', barcode: '8437000188007', phytosanitaryPassport: 'ES-03-FM-0188' },
     ],
   },
   {
@@ -181,7 +302,7 @@ export const products: Product[] = [
     location: 'Cuarentena fitosanitaria',
     eiviplantCode: 'EIV-2026-0215',
     procedencias: [
-      { id: 'pr8', supplier: 'Viveros del Levante', cost: '36,00 €', margin: '35%', physical: 24, reserved: 0, immobilized: 24, lot: 'VL-9920', entryDate: '7 mar 2026' },
+      { id: 'pr8', supplier: 'Viveros del Levante', cost: '36,00 €', margin: '35%', physical: 24, reserved: 0, immobilized: 24, lot: 'VL-9920', entryDate: '7 mar 2026', barcode: '8437000215008', phytosanitaryPassport: 'ES-46-VL-0215' },
     ],
   },
   {
@@ -191,7 +312,7 @@ export const products: Product[] = [
     location: 'Invernadero A',
     eiviplantCode: 'EIV-2026-0110',
     procedencias: [
-      { id: 'pr9', supplier: 'Flora Mediterránea', cost: '4,80 €', margin: '48%', physical: 96, reserved: 4, immobilized: 0, lot: 'FM-3310', entryDate: '2 mar 2026' },
+      { id: 'pr9', supplier: 'Flora Mediterránea', cost: '4,80 €', margin: '48%', physical: 96, reserved: 4, immobilized: 0, lot: 'FM-3310', entryDate: '2 mar 2026', barcode: '8437000110009', phytosanitaryPassport: 'ES-03-FM-0110' },
     ],
   },
   {
@@ -201,7 +322,7 @@ export const products: Product[] = [
     location: 'Invernadero A',
     eiviplantCode: 'EIV-2026-0156',
     procedencias: [
-      { id: 'pr10', supplier: 'Viveros del Levante', cost: '12,50 €', margin: '41%', physical: 58, reserved: 6, immobilized: 0, lot: 'VL-7721', entryDate: '26 feb 2026' },
+      { id: 'pr10', supplier: 'Viveros del Levante', cost: '12,50 €', margin: '41%', physical: 58, reserved: 6, immobilized: 0, lot: 'VL-7721', entryDate: '26 feb 2026', barcode: '8437000156010', phytosanitaryPassport: 'ES-46-VL-0156' },
     ],
   },
   {
@@ -211,7 +332,7 @@ export const products: Product[] = [
     location: 'Invernadero B',
     eiviplantCode: 'EIV-2026-0173',
     procedencias: [
-      { id: 'pr11', supplier: 'Viveros Can Marí', cost: '3,20 €', margin: '55%', physical: 134, reserved: 2, immobilized: 0, lot: 'CM-4412', entryDate: '18 feb 2026' },
+      { id: 'pr11', supplier: 'Viveros Can Marí', cost: '3,20 €', margin: '55%', physical: 134, reserved: 2, immobilized: 0, lot: 'CM-4412', entryDate: '18 feb 2026', barcode: '8437000173011', phytosanitaryPassport: 'ES-07-CM-0173' },
     ],
   },
   {
@@ -221,7 +342,7 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0044',
     procedencias: [
-      { id: 'pr12', supplier: 'Distribuciones Hortícolas', cost: '6,90 €', margin: '26%', physical: 178, reserved: 12, immobilized: 0, lot: 'DH-9021', entryDate: '22 feb 2026' },
+      { id: 'pr12', supplier: 'Distribuciones Hortícolas', cost: '6,90 €', margin: '26%', physical: 178, reserved: 12, immobilized: 0, lot: 'DH-9021', entryDate: '22 feb 2026', barcode: '8437000044012' },
     ],
   },
   {
@@ -231,7 +352,7 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0051',
     procedencias: [
-      { id: 'pr13', supplier: 'AgroSupply Ibiza', cost: '8,40 €', margin: '34%', physical: 92, reserved: 0, immobilized: 0, lot: 'AS-2204', entryDate: '12 feb 2026' },
+      { id: 'pr13', supplier: 'AgroSupply Ibiza', cost: '8,40 €', margin: '34%', physical: 92, reserved: 0, immobilized: 0, lot: 'AS-2204', entryDate: '12 feb 2026', barcode: '8437000051013' },
     ],
   },
   {
@@ -241,7 +362,7 @@ export const products: Product[] = [
     location: 'Invernadero B',
     eiviplantCode: 'EIV-2026-0194',
     procedencias: [
-      { id: 'pr14', supplier: 'Viveros del Levante', cost: '54,00 €', margin: '36%', physical: 28, reserved: 3, immobilized: 0, lot: 'VL-6610', entryDate: '5 mar 2026' },
+      { id: 'pr14', supplier: 'Viveros del Levante', cost: '54,00 €', margin: '36%', physical: 28, reserved: 3, immobilized: 0, lot: 'VL-6610', entryDate: '5 mar 2026', barcode: '8437000194014', phytosanitaryPassport: 'ES-46-VL-0194' },
     ],
   },
   {
@@ -251,7 +372,7 @@ export const products: Product[] = [
     location: 'Invernadero A',
     eiviplantCode: 'EIV-2026-0128',
     procedencias: [
-      { id: 'pr15', supplier: 'Flora Mediterránea', cost: '3,60 €', margin: '50%', physical: 7, reserved: 2, immobilized: 0, lot: 'FM-1188', entryDate: '1 mar 2026' },
+      { id: 'pr15', supplier: 'Flora Mediterránea', cost: '3,60 €', margin: '50%', physical: 7, reserved: 2, immobilized: 0, lot: 'FM-1188', entryDate: '1 mar 2026', barcode: '8437000128015', phytosanitaryPassport: 'ES-03-FM-0128' },
     ],
   },
   {
@@ -261,7 +382,7 @@ export const products: Product[] = [
     location: 'Invernadero A',
     eiviplantCode: 'EIV-2026-0208',
     procedencias: [
-      { id: 'pr16', supplier: 'Viveros del Levante', cost: '68,00 €', margin: '33%', physical: 14, reserved: 1, immobilized: 0, lot: 'VL-5502', entryDate: '24 feb 2026' },
+      { id: 'pr16', supplier: 'Viveros del Levante', cost: '68,00 €', margin: '33%', physical: 14, reserved: 1, immobilized: 0, lot: 'VL-5502', entryDate: '24 feb 2026', barcode: '8437000208016', phytosanitaryPassport: 'ES-46-VL-0208' },
     ],
   },
   {
@@ -271,7 +392,7 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0073',
     procedencias: [
-      { id: 'pr17', supplier: 'Distribuciones Hortícolas', cost: '42,00 €', margin: '29%', physical: 19, reserved: 3, immobilized: 0, lot: 'DH-7710', entryDate: '8 feb 2026' },
+      { id: 'pr17', supplier: 'Distribuciones Hortícolas', cost: '42,00 €', margin: '29%', physical: 19, reserved: 3, immobilized: 0, lot: 'DH-7710', entryDate: '8 feb 2026', barcode: '8437000073017' },
     ],
   },
   {
@@ -281,7 +402,7 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0082',
     procedencias: [
-      { id: 'pr18', supplier: 'Cerámica Garden', cost: '11,50 €', margin: '31%', physical: 86, reserved: 0, immobilized: 0, lot: 'CG-8820', entryDate: '14 feb 2026' },
+      { id: 'pr18', supplier: 'Cerámica Garden', cost: '11,50 €', margin: '31%', physical: 86, reserved: 0, immobilized: 0, lot: 'CG-8820', entryDate: '14 feb 2026', barcode: '8437000082018' },
     ],
   },
   {
@@ -291,7 +412,7 @@ export const products: Product[] = [
     location: 'Invernadero B',
     eiviplantCode: 'EIV-2026-0161',
     procedencias: [
-      { id: 'pr19', supplier: 'Viveros Can Marí', cost: '5,80 €', margin: '47%', physical: 112, reserved: 8, immobilized: 0, lot: 'CM-2290', entryDate: '19 feb 2026' },
+      { id: 'pr19', supplier: 'Viveros Can Marí', cost: '5,80 €', margin: '47%', physical: 112, reserved: 8, immobilized: 0, lot: 'CM-2290', entryDate: '19 feb 2026', barcode: '8437000161019', phytosanitaryPassport: 'ES-07-CM-0161' },
     ],
   },
   {
@@ -301,7 +422,7 @@ export const products: Product[] = [
     location: 'Invernadero A',
     eiviplantCode: 'EIV-2026-0135',
     procedencias: [
-      { id: 'pr20', supplier: 'Flora Mediterránea', cost: '14,20 €', margin: '39%', physical: 4, reserved: 0, immobilized: 0, lot: 'FM-9901', entryDate: '27 feb 2026' },
+      { id: 'pr20', supplier: 'Flora Mediterránea', cost: '14,20 €', margin: '39%', physical: 4, reserved: 0, immobilized: 0, lot: 'FM-9901', entryDate: '27 feb 2026', barcode: '8437000135020', phytosanitaryPassport: 'ES-03-FM-0135' },
     ],
   },
   {
@@ -311,7 +432,7 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0059',
     procedencias: [
-      { id: 'pr21', supplier: 'AgroSupply Ibiza', cost: '4,10 €', margin: '36%', physical: 6, reserved: 0, immobilized: 0, lot: 'AS-3308', entryDate: '3 mar 2026' },
+      { id: 'pr21', supplier: 'AgroSupply Ibiza', cost: '4,10 €', margin: '36%', physical: 6, reserved: 0, immobilized: 0, lot: 'AS-3308', entryDate: '3 mar 2026', barcode: '8437000059021' },
     ],
   },
   {
@@ -321,7 +442,7 @@ export const products: Product[] = [
     location: 'Invernadero B',
     eiviplantCode: 'EIV-2026-0180',
     procedencias: [
-      { id: 'pr22', supplier: 'Flora Mediterránea', cost: '2,90 €', margin: '53%', physical: 0, reserved: 0, immobilized: 0, lot: 'FM-4402', entryDate: '8 ene 2026' },
+      { id: 'pr22', supplier: 'Flora Mediterránea', cost: '2,90 €', margin: '53%', physical: 0, reserved: 0, immobilized: 0, lot: 'FM-4402', entryDate: '8 ene 2026', barcode: '8437000180022', phytosanitaryPassport: 'ES-03-FM-0180' },
     ],
   },
   {
@@ -331,7 +452,7 @@ export const products: Product[] = [
     location: 'Invernadero B',
     eiviplantCode: 'EIV-2026-0211',
     procedencias: [
-      { id: 'pr23', supplier: 'Viveros del Levante', cost: '22,00 €', margin: '44%', physical: 22, reserved: 4, immobilized: 0, lot: 'VL-3388', entryDate: '6 mar 2026' },
+      { id: 'pr23', supplier: 'Viveros del Levante', cost: '22,00 €', margin: '44%', physical: 22, reserved: 4, immobilized: 0, lot: 'VL-3388', entryDate: '6 mar 2026', barcode: '8437000211023', phytosanitaryPassport: 'ES-46-VL-0211' },
     ],
   },
   {
@@ -341,13 +462,13 @@ export const products: Product[] = [
     location: 'Almacén principal',
     eiviplantCode: 'EIV-2026-0063',
     procedencias: [
-      { id: 'pr24', supplier: 'Distribuciones Hortícolas', cost: '16,80 €', margin: '27%', physical: 31, reserved: 0, immobilized: 0, lot: 'DH-4419', entryDate: '11 feb 2026' },
+      { id: 'pr24', supplier: 'Distribuciones Hortícolas', cost: '16,80 €', margin: '27%', physical: 31, reserved: 0, immobilized: 0, lot: 'DH-4419', entryDate: '11 feb 2026', barcode: '8437000063024' },
     ],
   },
 ]
 
 export const reservations: Reservation[] = [
-  { id: 'r1', product: 'Rosa mini roja', quantity: 9, client: 'María Torres', date: 'Vence 12 mar', status: 'Activa', notes: 'Recogida en tienda · jardín particular' },
+  { id: 'r1', product: 'Rosal mini rojo', quantity: 9, client: 'María Torres', date: 'Vence 12 mar', status: 'Activa', notes: 'Recogida en tienda · jardín particular' },
   { id: 'r2', product: 'Blaukorn Compo 5 kg', quantity: 14, client: 'Hotel Ses Salines', date: 'Vence 15 mar', status: 'Activa', notes: 'Entrega en almacén · pedido mensual' },
   { id: 'r3', product: 'Monstera Deliciosa', quantity: 5, client: 'Carlos Riera', date: 'Retirada ayer', status: 'Retirada', notes: 'Venta cerrada en TPV' },
   { id: 'r4', product: 'Maceta clásica terracota 30 cm', quantity: 24, client: 'Decor Ibiza SL', date: 'Venció 5 mar', status: 'Vencida', notes: 'Pendiente de contactar · obra en Sant Josep' },
@@ -360,8 +481,8 @@ export const reservations: Reservation[] = [
 ]
 
 export const movements: Movement[] = [
-  { id: 'm1', product: 'Rosa mini roja', type: 'Entrada', quantity: 86, reason: 'Albarán VL-8841 · Viveros del Levante', user: 'Usuario Ventas', date: 'Hoy, 10:24', tone: 'in' },
-  { id: 'm2', product: 'Rosa mini roja', type: 'Reserva', quantity: -9, reason: 'Cliente María Torres', user: 'Usuario Almacén', date: 'Hoy, 09:10', tone: 'out' },
+  { id: 'm1', product: 'Rosal mini rojo', type: 'Entrada', quantity: 86, reason: 'Albarán VL-8841 · Viveros del Levante', user: 'Usuario Ventas', date: 'Hoy, 10:24', tone: 'in' },
+  { id: 'm2', product: 'Rosal mini rojo', type: 'Reserva', quantity: -9, reason: 'Cliente María Torres', user: 'Usuario Almacén', date: 'Hoy, 09:10', tone: 'out' },
   { id: 'm3', product: 'Olivo miniatura', type: 'Inmovilizado', quantity: 24, reason: 'Cuarentena fitosanitaria · lote VL-9920', user: 'Usuario Ventas', date: 'Ayer, 16:40', tone: 'neutral' },
   { id: 'm4', product: 'Maceta clásica terracota 30 cm', type: 'Salida', quantity: -18, reason: 'Venta TPV Link · ticket #4821', user: 'Usuario Almacén', date: 'Ayer, 14:20', tone: 'out' },
   { id: 'm5', product: 'Blaukorn Compo 5 kg', type: 'Merma', quantity: -2, reason: 'Saco roto en almacén', user: 'Usuario Ventas', date: '6 mar, 11:05', tone: 'out' },
@@ -392,11 +513,11 @@ export type ActivityLogEntry = {
 }
 
 export const activityLog: ActivityLogEntry[] = [
-  { id: 'a1', date: 'Hoy', time: '10:24', user: 'Usuario Ventas', role: 'Ventas', action: 'Registró entrada de stock', detail: 'Rosa mini roja · 86 uds. · albarán VL-8841', module: 'Recepción' },
+  { id: 'a1', date: 'Hoy', time: '10:24', user: 'Usuario Ventas', role: 'Ventas', action: 'Registró entrada de stock', detail: 'Rosal mini rojo · 86 uds. · albarán VL-8841', module: 'Recepción' },
   { id: 'a2', date: 'Hoy', time: '10:18', user: 'Usuario Administrador', role: 'Administrador', action: 'Revisó informe de existencias', detail: 'Consulta disponibilidad global · 1.628 uds.', module: 'Informes' },
   { id: 'a3', date: 'Hoy', time: '10:02', user: 'Usuario Administrador', role: 'Administrador', action: 'Inició sesión', detail: 'Acceso desde panel web · Sant Antoni', module: 'Sistema' },
   { id: 'a4', date: 'Hoy', time: '09:42', user: 'Usuario Ventas', role: 'Ventas', action: 'Procesó albarán OCR', detail: '18 líneas detectadas · pendiente confirmación', module: 'Recepción' },
-  { id: 'a5', date: 'Hoy', time: '09:10', user: 'Usuario Almacén', role: 'Almacén', action: 'Creó reserva', detail: 'Rosa mini roja · 9 uds. · María Torres', module: 'Reservas' },
+  { id: 'a5', date: 'Hoy', time: '09:10', user: 'Usuario Almacén', role: 'Almacén', action: 'Creó reserva', detail: 'Rosal mini rojo · 9 uds. · María Torres', module: 'Reservas' },
   { id: 'a6', date: 'Hoy', time: '09:05', user: 'Usuario Almacén', role: 'Almacén', action: 'Consultó ficha de producto', detail: 'Blaukorn Compo 5 kg · EIV-2026-0098', module: 'Existencias' },
   { id: 'a7', date: 'Hoy', time: '09:01', user: 'Usuario Almacén', role: 'Almacén', action: 'Inició sesión', detail: 'Turno mañana · invernadero A', module: 'Sistema' },
   { id: 'a8', date: 'Hoy', time: '08:47', user: 'Usuario Ventas', role: 'Ventas', action: 'Inició sesión', detail: 'Acceso desde mostrador', module: 'Sistema' },
@@ -491,12 +612,10 @@ export function computeAppMetrics(): AppMetrics {
     })
   })
 
-  const suppliers = [...supplierRefs.entries()]
-    .map(([name, refs]) => ({
-      name,
-      references: refs.size,
-      city: SUPPLIER_META[name]?.city ?? 'España',
-      updated: SUPPLIER_META[name]?.updated ?? 'Actualizado recientemente',
+  const suppliers = suppliersCatalog
+    .map((s) => ({
+      ...s,
+      references: supplierRefs.get(s.name)?.size ?? 0,
     }))
     .sort((a, b) => b.references - a.references)
 
@@ -511,9 +630,10 @@ export function computeAppMetrics(): AppMetrics {
 
   const locations = [...locationStats.entries()].map(([name, stats]) => ({
     name,
-    description: LOCATION_META[name] ?? 'Ubicación operativa',
+    description: LOCATION_META[name]?.description ?? 'Ubicación operativa',
     items: stats.items,
     units: stats.units,
+    zone: LOCATION_META[name]?.zone ?? 'Interior',
   }))
 
   return {

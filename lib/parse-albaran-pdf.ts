@@ -1,153 +1,12 @@
-export type ParsedAlbaranLine = {
-  product: string
-  qty: number
-  unit: string
-  status: 'Confirmado' | 'Revisar' | 'Crear ficha'
-  matchedProductId?: string
-}
+import { parseCommercialDocument } from '@/lib/parse-commercial-document'
+import type { ParseHints, ParsedDocument, ParsedDocumentLine } from '@/lib/document-catalog'
 
-export type ParsedAlbaran = {
-  supplier: string
-  albaranNumber: string
-  deliveryDate: string
-  lines: ParsedAlbaranLine[]
-  rawText: string
-}
+export type ParsedAlbaranLine = ParsedDocumentLine
+export type ParsedAlbaran = ParsedDocument
+export type { ParseHints }
 
-import { CATALOG_PRODUCT_NAMES } from '@/lib/demo-data'
-
-export { CATALOG_PRODUCT_NAMES }
-
-const NOISE = new Set([
-  'Albarán',
-  'Empresa:',
-  'Domicilio:',
-  'NIF:',
-  'ENTREGAR A:',
-  'Cliente:',
-  'Código postal / ciudad:',
-  'Nº de albarán:',
-  'Fecha:',
-  'Nº de pedido:',
-  'Fecha de entrega:',
-  'Lugar de entrega:',
-  'Pos.',
-  'Concepto / Descripción',
-  'Cantidad',
-  'Unidad',
-  'Precio',
-  'unitario',
-  'Importe',
-  '1',
-  '2',
-  '3',
-  '4',
-  '5',
-  'Fecha de recepción y firma del receptor:',
-  'Observaciones:',
-  'Ciudad:',
-  'Tel.:',
-  'Correo:',
-  'Banco:',
-  'BIC:',
-  'IBAN:',
-  'Titular:',
-  'Nombre del director:',
-  'Eiviplant',
-  'ud',
-  'uds',
-  'unidad',
-])
-
-function normalize(text: string) {
-  return text.normalize('NFC').replace(/\s+/g, ' ').trim()
-}
-
-function isQuantity(value: string) {
-  return /^\d+(?:[.,]\d+)?$/.test(value)
-}
-
-function parseQuantity(value: string) {
-  return Math.round(Number(value.replace(',', '.')))
-}
-
-function findCatalogProduct(name: string) {
-  const normalized = normalize(name).toLowerCase()
-  return CATALOG_PRODUCT_NAMES.find((p) => p.toLowerCase() === normalized)
-}
-
-function extractHeader(lines: string[]) {
-  let supplier = 'Proveedor no detectado'
-  let albaranNumber = '—'
-  let deliveryDate = '—'
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    if (line === 'Viveros del Levante' || line === 'Flora Mediterránea') {
-      supplier = line
-    }
-    if (/^VL-\d+$/i.test(line)) albaranNumber = line.toUpperCase()
-    if (/^\d{1,2}\s+(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\.?\s+\d{4}$/i.test(line)) {
-      deliveryDate = line
-    }
-  }
-
-  return { supplier, albaranNumber, deliveryDate }
-}
-
-/** Extrae líneas de producto leyendo texto embebido del PDF (compatible con edición en cualquier lector PDF). */
-export function parseAlbaranText(rawText: string): ParsedAlbaran {
-  const lines = rawText
-    .split(/\r?\n/)
-    .map((l) => normalize(l))
-    .filter(Boolean)
-
-  const header = extractHeader(lines)
-  const parsed: ParsedAlbaranLine[] = []
-  const used = new Set<number>()
-
-  for (let i = 0; i < lines.length; i++) {
-    if (used.has(i)) continue
-    const line = lines[i]
-    if (NOISE.has(line) || line.length < 3) continue
-
-    const catalogMatch = findCatalogProduct(line)
-    const next = lines[i + 1]
-    const unit = lines[i + 2]
-
-    if (catalogMatch && next && isQuantity(next)) {
-      parsed.push({
-        product: catalogMatch,
-        qty: parseQuantity(next),
-        unit: unit && (unit === 'ud' || unit === 'uds' || unit === 'unidad') ? unit : 'ud',
-        status: 'Confirmado',
-      })
-      used.add(i)
-      used.add(i + 1)
-      if (unit === 'ud' || unit === 'uds') used.add(i + 2)
-      continue
-    }
-
-    if (!catalogMatch && next && isQuantity(next) && (unit === 'ud' || unit === 'uds' || unit === 'unidad')) {
-      if (/[a-záéíóúñ]/i.test(line) && !/^\d+[.,]\d+$/.test(line)) {
-        parsed.push({
-          product: line,
-          qty: parseQuantity(next),
-          unit,
-          status: 'Crear ficha',
-        })
-        used.add(i)
-        used.add(i + 1)
-        used.add(i + 2)
-      }
-    }
-  }
-
-  return {
-    ...header,
-    lines: parsed,
-    rawText,
-  }
+export function parseAlbaranText(rawText: string, hints: ParseHints = {}): ParsedAlbaran {
+  return parseCommercialDocument(rawText, hints)
 }
 
 export async function extractTextFromPdf(file: ArrayBuffer): Promise<string> {
@@ -169,7 +28,7 @@ export async function extractTextFromPdf(file: ArrayBuffer): Promise<string> {
   return chunks.join('\n')
 }
 
-export async function parseAlbaranPdf(file: ArrayBuffer): Promise<ParsedAlbaran> {
+export async function parseAlbaranPdf(file: ArrayBuffer, hints: ParseHints = {}): Promise<ParsedAlbaran> {
   const rawText = await extractTextFromPdf(file)
-  return parseAlbaranText(rawText)
+  return parseAlbaranText(rawText, hints)
 }

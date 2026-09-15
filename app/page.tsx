@@ -37,12 +37,8 @@ import {
   Users,
   X,
   Bookmark,
-  Camera,
 } from 'lucide-react'
-import { parseAlbaranPdf, type ParsedAlbaran } from '@/lib/parse-albaran-pdf'
-import { parseAlbaranImage } from '@/lib/parse-albaran-image'
-import { canUseLiveCamera, openNativeCamera } from '@/lib/open-device-camera'
-import { ReceptionCamera } from '@/components/reception-camera'
+import { ReceptionWizard } from '@/components/reception-wizard'
 import { AppPreferencesProvider, useAppPreferences } from '@/components/app-preferences-provider'
 import { GuidedTour, HelpCenter } from '@/components/help-center'
 import { LoginScreen } from '@/components/login-screen'
@@ -51,10 +47,13 @@ import { UserMenu } from '@/components/user-menu'
 import { UsersPanel } from '@/components/users-panel'
 import { NotificationsPanel } from '@/components/notifications-panel'
 import { ManualEntryWizard } from '@/components/manual-entry-wizard'
+import { ReservationWizard } from '@/components/reservation-wizard'
+import { SuppliersPanel } from '@/components/suppliers-panel'
 import { tutorialSteps, type HelpTopic } from '@/lib/help-content'
 import {
   activityLog,
   computeAppMetrics,
+  locationZone,
   movements,
   productStatus,
   products,
@@ -62,9 +61,12 @@ import {
   stockTotals,
   type ActivityLogEntry,
   type AppMetrics,
+  type LocationZone,
   type Product,
+  type Procedencia,
+  type Reservation,
 } from '@/lib/demo-data'
-import { getLocationImage, getProductImage, getSupplierImage } from '@/lib/media'
+import { getLocationImage, getProductImage } from '@/lib/media'
 
 const nav = [
   ['Resumen', LayoutDashboard],
@@ -219,6 +221,7 @@ function PageContent() {
   const [active, setActive] = useState('Resumen')
   const [query, setQuery] = useState('')
   const [filter, setFilter] = useState('Todos')
+  const [zoneFilter, setZoneFilter] = useState<'Todas' | LocationZone>('Todas')
   const [selected, setSelected] = useState<string[]>([])
   const [grid, setGrid] = useState(preferences.defaultInventoryView === 'grid')
   const [notice, setNotice] = useState('')
@@ -244,10 +247,16 @@ function PageContent() {
     () =>
       products.filter((item) => {
         const status = productStatus(item)
-        const text = `${item.name} ${item.category} ${item.location} ${item.eiviplantCode} ${item.procedencias.map((p) => p.supplier).join(' ')}`.toLowerCase()
-        return text.includes(query.toLowerCase()) && (filter === 'Todos' || status === filter)
+        const zone = locationZone(item.location)
+        const text = `${item.name} ${item.category} ${item.location} ${item.eiviplantCode} ${item.procedencias
+          .map((p) => `${p.supplier} ${p.lot} ${p.barcode ?? ''} ${p.phytosanitaryPassport ?? ''}`)
+          .join(' ')}`.toLowerCase()
+        const matchesQuery = text.includes(query.toLowerCase())
+        const matchesStatus = filter === 'Todos' || status === filter
+        const matchesZone = zoneFilter === 'Todas' || zone === zoneFilter
+        return matchesQuery && matchesStatus && matchesZone
       }),
-    [query, filter],
+    [query, filter, zoneFilter],
   )
 
   const quickResults = useMemo(
@@ -266,6 +275,7 @@ function PageContent() {
     setActive(label)
     setQuery('')
     setFilter('Todos')
+    setZoneFilter('Todas')
     setSelected([])
     setMobileOpen(false)
   }
@@ -465,6 +475,8 @@ function PageContent() {
                 filtered={filtered}
                 filter={filter}
                 setFilter={setFilter}
+                zoneFilter={zoneFilter}
+                setZoneFilter={setZoneFilter}
                 query={query}
                 setQuery={setQuery}
                 selected={selected}
@@ -481,7 +493,7 @@ function PageContent() {
             {active === 'Movimientos' && <Movements action={action} movements={movements} metrics={metrics} />}
             {active === 'Reservas' && <ReservationsView action={action} reservations={reservations} metrics={metrics} />}
             {active === 'Recepción' && <Reception action={action} />}
-            {active === 'Proveedores' && <Suppliers action={action} suppliers={metrics.suppliers} />}
+            {active === 'Proveedores' && <SuppliersPanel suppliers={metrics.suppliers} onNotice={action} />}
             {active === 'Ubicaciones' && <Locations action={action} locations={metrics.locations} />}
             {active === 'Informes' && <Reports action={action} metrics={metrics} />}
             {active === 'Usuarios' && isAdmin && <UsersPanel onNotice={action} />}
@@ -800,6 +812,8 @@ function Inventory({
   filtered,
   filter,
   setFilter,
+  zoneFilter,
+  setZoneFilter,
   query,
   setQuery,
   selected,
@@ -815,6 +829,8 @@ function Inventory({
   filtered: Product[]
   filter: string
   setFilter: (f: string) => void
+  zoneFilter: 'Todas' | LocationZone
+  setZoneFilter: (z: 'Todas' | LocationZone) => void
   query: string
   setQuery: (q: string) => void
   selected: string[]
@@ -840,11 +856,22 @@ function Inventory({
       <div className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-center">
         <div className="relative flex-1 sm:max-w-[340px]">
           <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#9baa9f]" />
-          <input aria-label="Buscar productos" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, código o proveedor..." className="h-10 w-full rounded-xl border border-[#e3e9e3] bg-white pl-10 text-sm outline-none" />
+          <input aria-label="Buscar productos" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Buscar por nombre, código, barras, pasaporte o proveedor..." className="h-10 w-full rounded-xl border border-[#e3e9e3] bg-white pl-10 text-sm outline-none" />
         </div>
         <div className="flex flex-wrap gap-1 rounded-xl bg-[#f0f4f0] p-1 text-xs font-medium text-[#7f8e83]">
           {['Todos', 'En stock', 'Stock bajo', 'Agotado'].map((x) => (
             <button key={x} onClick={() => setFilter(x)} className={`rounded-lg px-3 py-2 ${filter === x ? 'bg-white text-[#31543a] shadow-sm' : ''}`}>
+              {x}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap gap-1 rounded-xl bg-[#f0f4f0] p-1 text-xs font-medium text-[#7f8e83]">
+          {(['Todas', 'Interior', 'Exterior', 'Cuarentena'] as const).map((x) => (
+            <button
+              key={x}
+              onClick={() => setZoneFilter(x)}
+              className={`rounded-lg px-3 py-2 ${zoneFilter === x ? 'bg-white text-[#31543a] shadow-sm' : ''}`}
+            >
               {x}
             </button>
           ))}
@@ -977,11 +1004,13 @@ function Inventory({
 function ProcedenciasTable({ procedencias }: { procedencias: Procedencia[] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full min-w-[640px] text-left text-sm">
+      <table className="w-full min-w-[860px] text-left text-sm">
         <thead>
           <tr className="text-[11px] font-semibold uppercase tracking-wide text-[#829187]">
             <th className="pb-2 pr-4">Proveedor</th>
             <th className="pb-2 pr-4">Lote</th>
+            <th className="pb-2 pr-4">Código barras</th>
+            <th className="pb-2 pr-4">Pasaporte</th>
             <th className="pb-2 pr-4">Entrada</th>
             <th className="pb-2 pr-4">Coste</th>
             <th className="pb-2 pr-4">Margen</th>
@@ -995,6 +1024,8 @@ function ProcedenciasTable({ procedencias }: { procedencias: Procedencia[] }) {
             <tr key={pr.id} className="border-t border-[#edf0ed]">
               <td className="py-2.5 pr-4 font-medium">{pr.supplier}</td>
               <td className="py-2.5 pr-4 text-[#66746a]">{pr.lot}</td>
+              <td className="py-2.5 pr-4 font-mono text-xs text-[#66746a]">{pr.barcode || '—'}</td>
+              <td className="py-2.5 pr-4 font-mono text-xs text-[#66746a]">{pr.phytosanitaryPassport || '—'}</td>
               <td className="py-2.5 pr-4 text-[#66746a]">{pr.entryDate}</td>
               <td className="py-2.5 pr-4">{pr.cost}</td>
               <td className="py-2.5 pr-4 text-[#66746a]">{pr.margin}</td>
@@ -1040,8 +1071,17 @@ function ProductCard({ item, selected, onSelect }: { item: Product; selected: bo
           <div>
             <h3 className="text-sm font-medium">{item.name}</h3>
             <p className="mt-1 text-xs text-[#8e9b91]">
-              {item.category} · {item.procedencias.length} procedencia{item.procedencias.length > 1 ? 's' : ''}
+              {item.category} · {item.location} · {item.procedencias.length} procedencia{item.procedencias.length > 1 ? 's' : ''}
             </p>
+            {item.procedencias.length > 1 && (
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                {item.procedencias.map((pr) => (
+                  <span key={pr.id} className="rounded-full bg-[#f0f4f0] px-2 py-0.5 font-mono text-[10px] text-[#597360]">
+                    {pr.phytosanitaryPassport || pr.barcode || pr.lot}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
           <Status status={status} />
         </div>
@@ -1175,23 +1215,28 @@ function Movements({ action, movements, metrics }: { action: (m: string) => void
   )
 }
 
-function ReservationsView({ action, reservations, metrics }: { action: (m: string) => void; reservations: typeof import('@/lib/demo-data').reservations; metrics: AppMetrics }) {
+function ReservationsView({ action, reservations: initial, metrics }: { action: (m: string) => void; reservations: typeof import('@/lib/demo-data').reservations; metrics: AppMetrics }) {
+  const [extra, setExtra] = useState<Reservation[]>([])
+  const [wizardOpen, setWizardOpen] = useState(false)
+  const list = [...extra, ...initial]
   const statusStyle: Record<string, string> = {
     Activa: 'bg-[#e3f5e8] text-[#328354]',
     Vencida: 'bg-[#fde3e0] text-[#c55f58]',
     Retirada: 'bg-[#edf0ed] text-[#66746a]',
   }
+  const extraActive = extra.filter((r) => r.status === 'Activa').length
+  const extraExpiring = extra.filter((r) => r.status === 'Activa' && r.date.startsWith('Vence')).length
   const { active, expiring, withdrawnMonth, activeDelta, expiringDelta, withdrawnDelta } = metrics.reservations
   return (
     <>
-      <Heading eyebrow="COMPROMISO CON CLIENTE" title="Reservas" subtitle="Unidades reservadas reducen la disponibilidad sin retirar el stock físico" action={() => action('Nueva reserva preparada')} actionLabel="Nueva reserva" />
+      <Heading eyebrow="COMPROMISO CON CLIENTE" title="Reservas" subtitle="Unidades reservadas reducen la disponibilidad sin retirar el stock físico" action={() => setWizardOpen(true)} actionLabel="Nueva reserva" />
       <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-3">
-        <Stat icon={Bookmark} label="RESERVAS ACTIVAS" value={String(active)} change={activeDelta.change} tone={activeDelta.tone} />
-        <Stat icon={CircleAlert} label="POR VENCER" value={String(expiring)} change={expiringDelta.change} tone={expiringDelta.tone} />
+        <Stat icon={Bookmark} label="RESERVAS ACTIVAS" value={String(active + extraActive)} change={activeDelta.change} tone={activeDelta.tone} />
+        <Stat icon={CircleAlert} label="POR VENCER" value={String(expiring + extraExpiring)} change={expiringDelta.change} tone={expiringDelta.tone} />
         <Stat icon={CheckCircle2} label="RETIRADAS ESTE MES" value={String(withdrawnMonth)} change={withdrawnDelta.change} tone={withdrawnDelta.tone} />
       </div>
       <div className="overflow-hidden rounded-2xl border bg-white">
-        {reservations.map((r) => (
+        {list.map((r) => (
           <div key={r.id} className="flex flex-col gap-3 border-b px-5 py-5 last:border-0 sm:flex-row sm:items-center">
             <ProductThumb productName={r.product} className="size-11 rounded-xl" />
             <div className="min-w-0 flex-1">
@@ -1212,295 +1257,45 @@ function ReservationsView({ action, reservations, metrics }: { action: (m: strin
         ))}
       </div>
       <p className="mt-4 text-xs text-[#9aa59c]">La gestión de cobros no forma parte de esta fase. Vigencia, avisos y cierre se configurarán con Eiviplant.</p>
+      <ReservationWizard
+        open={wizardOpen}
+        onClose={() => setWizardOpen(false)}
+        onCreate={(reservation) => {
+          setExtra((prev) => [reservation, ...prev])
+          action(`Reserva de ${reservation.quantity} uds. de «${reservation.product}» para ${reservation.client} (demo)`)
+        }}
+      />
     </>
   )
 }
 
 function Reception({ action }: { action: (m: string) => void }) {
-  const inputRef = useRef<HTMLInputElement>(null)
-  const photoInputRef = useRef<HTMLInputElement>(null)
-  const [dragging, setDragging] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const [loadingLabel, setLoadingLabel] = useState('Leyendo albarán…')
-  const [error, setError] = useState('')
-  const [fileName, setFileName] = useState('')
-  const [parsed, setParsed] = useState<ParsedAlbaran | null>(null)
-  const [cameraOpen, setCameraOpen] = useState(false)
+  const [manualQuery, setManualQuery] = useState('')
+  const [manualNonce, setManualNonce] = useState(0)
 
-  const applyResult = useCallback((result: ParsedAlbaran, label: string) => {
-    if (result.lines.length === 0) {
-      setError('No se detectaron líneas de producto. Prueba con mejor luz o carga el PDF directamente.')
-      setParsed(null)
-      return
-    }
-    setParsed(result)
-    setError('')
-    setFileName(label)
-  }, [])
-
-  const processFile = useCallback(async (file: File) => {
-    const isPdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')
-    const isImage = file.type.startsWith('image/')
-
-    if (!isPdf && !isImage) {
-      setError('Formato no admitido. Usa PDF o una foto JPG/PNG del albarán.')
-      return
-    }
-
-    setLoading(true)
-    setLoadingLabel(isPdf ? 'Leyendo PDF…' : 'Leyendo imagen con OCR…')
-    setError('')
-    setFileName(file.name)
-
-    try {
-      const result = isPdf ? await parseAlbaranPdf(await file.arrayBuffer()) : await parseAlbaranImage(file)
-      applyResult(result, file.name)
-    } catch {
-      setError(isPdf ? 'No se pudo leer el PDF.' : 'No se pudo leer la imagen. Mejora la luz o el encuadre.')
-      setParsed(null)
-    } finally {
-      setLoading(false)
-    }
-  }, [applyResult])
-
-  const onDrop = useCallback(
-    (event: React.DragEvent<HTMLDivElement>) => {
-      event.preventDefault()
-      setDragging(false)
-      const file = event.dataTransfer.files[0]
-      if (file) processFile(file)
-    },
-    [processFile],
-  )
-
-  const statusStyle: Record<string, string> = {
-    Confirmado: 'bg-[#e3f5e8] text-[#328354]',
-    Revisar: 'bg-[#fff0d8] text-[#be761b]',
-    'Crear ficha': 'bg-[#ede8f4] text-[#7b6b9e]',
+  const openManual = (productName = '') => {
+    if (productName) setManualQuery(productName)
+    setManualNonce((n) => n + 1)
+    document.getElementById('manual-entry-wizard')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
   }
-
-  const confirmable = parsed?.lines.filter((l) => l.status === 'Confirmado').length ?? 0
-
-  const openCamera = useCallback(() => {
-    if (canUseLiveCamera()) {
-      setCameraOpen(true)
-      return
-    }
-    openNativeCamera(photoInputRef.current)
-  }, [])
 
   return (
     <>
       <Heading
         eyebrow="ENTRADA DE MERCANCÍA"
-        title="Recepción con OCR"
-        subtitle="Carga el PDF, fotografía el albarán impreso o escanea con la cámara del dispositivo"
-        action={openCamera}
-        actionLabel="Escanear con cámara"
+        title="Recepción"
+        subtitle="Arriba se lee un documento. Abajo se registra a mano si no hay papel."
+        action={() => openManual()}
+        actionLabel="Entrada a mano"
       />
-
-      <div className="mb-5 flex flex-wrap gap-3">
-        <a
-          href="/albaran-prueba-eiviplant.pdf"
-          download="albaran-prueba-eiviplant.pdf"
-          className="inline-flex h-10 items-center gap-2 rounded-xl border border-[#316742] bg-white px-4 text-sm font-medium text-[#316742] hover:bg-[#f5f8f4]"
-        >
-          <Download className="size-4" />
-          Descargar albarán de prueba
-        </a>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          className="inline-flex h-10 items-center gap-2 rounded-xl border bg-white px-4 text-sm font-medium text-[#31543a] hover:bg-[#f5f8f4]"
-        >
-          <FileText className="size-4" />
-          Cargar PDF
-        </button>
-        <span className="self-center text-xs text-[#9aa59c]">PDF editable · foto impresa · cámara en tablet o móvil</span>
+      <ReceptionWizard onComplete={action} onCreateFicha={openManual} />
+      <div className="my-8 flex items-center gap-4" role="separator">
+        <span className="h-px flex-1 bg-[#d7ddd8]" />
+        <h2 className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#84a08a]">O, si no hay documento</h2>
+        <span className="h-px flex-1 bg-[#d7ddd8]" />
       </div>
-
-      <div className="grid gap-5 lg:grid-cols-[1fr_1.2fr]">
-        <div className="rounded-2xl border bg-white p-6">
-          <div className="flex items-center gap-3">
-            <div className="flex size-11 items-center justify-center rounded-xl bg-[#e4f1e5] text-[#316742]">
-              <Camera className="size-5" />
-            </div>
-            <div>
-              <h2 className="font-semibold">{parsed ? 'Documento leído' : 'Documento pendiente'}</h2>
-              <p className="text-sm text-[#829187]">
-                {parsed
-                  ? `${parsed.albaranNumber} · ${parsed.supplier}${fileName ? ` · ${fileName}` : ''}`
-                  : 'PDF, foto o captura con cámara'}
-              </p>
-            </div>
-          </div>
-
-          <input
-            ref={inputRef}
-            type="file"
-            accept="application/pdf,.pdf"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) processFile(file)
-              e.target.value = ''
-            }}
-          />
-
-          <input
-            ref={photoInputRef}
-            type="file"
-            accept="image/*"
-            capture="environment"
-            className="hidden"
-            onChange={(e) => {
-              const file = e.target.files?.[0]
-              if (file) processFile(file)
-              e.target.value = ''
-            }}
-          />
-
-          <div
-            onDragOver={(e) => {
-              e.preventDefault()
-              setDragging(true)
-            }}
-            onDragLeave={() => setDragging(false)}
-            onDrop={onDrop}
-            className={`mt-6 flex h-56 flex-col items-center justify-center rounded-xl border-2 border-dashed text-center transition-colors ${dragging ? 'border-[#316742] bg-[#edf5ed]' : 'border-[#cbd5cc] bg-[#f8faf7]'}`}
-          >
-            <ScanLine className="size-10 text-[#85a38b]" />
-            <p className="mt-3 text-sm font-medium">{loading ? loadingLabel : 'Arrastra PDF o foto aquí'}</p>
-            <p className="mt-1 px-6 text-xs text-[#9aa59c]">También puedes imprimir el albarán de prueba y fotografiarlo</p>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => inputRef.current?.click()}
-                className="rounded-lg border bg-white px-4 py-2 text-xs font-medium text-[#31543a] disabled:opacity-60"
-              >
-                PDF
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={() => photoInputRef.current?.click()}
-                className="rounded-lg border bg-white px-4 py-2 text-xs font-medium text-[#31543a] disabled:opacity-60"
-              >
-                Foto
-              </button>
-              <button
-                type="button"
-                disabled={loading}
-                onClick={openCamera}
-                className="rounded-lg bg-[#316742] px-4 py-2 text-xs font-medium text-white disabled:opacity-60"
-              >
-                Cámara
-              </button>
-            </div>
-          </div>
-
-          {error && <div className="mt-4 rounded-xl bg-[#fde3e0] p-3 text-xs text-[#c55f58]">{error}</div>}
-
-          <div className="mt-4 rounded-xl bg-[#fff8eb] p-3 text-xs text-[#8a5a12]">
-            El PDF lee texto embebido al instante. La cámara y las fotos usan OCR: necesitan buena luz, poco inclinado y la tabla bien visible.
-          </div>
-        </div>
-
-        <div className="rounded-2xl border bg-white p-6">
-          <div className="flex items-center justify-between">
-            <h2 className="font-semibold">Líneas detectadas</h2>
-            <span className="rounded-full bg-[#e3f5e8] px-2 py-1 text-[11px] text-[#328354]">
-              {parsed ? `${parsed.lines.length} líneas` : 'Sin cargar'}
-            </span>
-          </div>
-
-          {!parsed && !loading && (
-            <div className="mt-8 rounded-xl border border-dashed border-[#dfe5df] bg-[#fafbfa] p-8 text-center text-sm text-[#829187]">
-              Descarga el albarán, imprímelo o ábrelo en pantalla y escanéalo con la cámara del móvil o tablet.
-            </div>
-          )}
-
-          {parsed && (
-            <>
-              <div className="mt-4 flex flex-wrap gap-2 text-xs text-[#829187]">
-                <span className="rounded-full bg-[#f0f4f0] px-2.5 py-1">Proveedor: {parsed.supplier}</span>
-                <span className="rounded-full bg-[#f0f4f0] px-2.5 py-1">Albarán: {parsed.albaranNumber}</span>
-                <span className="rounded-full bg-[#f0f4f0] px-2.5 py-1">Entrega: {parsed.deliveryDate}</span>
-              </div>
-              <div className="mt-4 flex flex-col gap-3">
-                {parsed.lines.map((line, i) => (
-                  <div key={`${line.product}-${i}`} className="rounded-xl border border-[#edf0ed] p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{line.product}</p>
-                        <p className="text-sm text-[#829187]">
-                          {line.qty} {line.unit}. · {parsed.supplier}
-                        </p>
-                      </div>
-                      <span className={`shrink-0 rounded-full px-2 py-1 text-[10px] font-medium ${statusStyle[line.status]}`}>{line.status}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <button
-                type="button"
-                disabled={confirmable === 0}
-                onClick={() =>
-                  action(
-                    confirmable > 0
-                      ? `Recepción confirmada: ${confirmable} línea${confirmable > 1 ? 's' : ''} aplicada${confirmable > 1 ? 's' : ''} al stock`
-                      : 'No hay líneas confirmables',
-                  )
-                }
-                className="mt-5 w-full rounded-xl bg-[#316742] py-2.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                Confirmar {confirmable > 0 ? `${confirmable} línea${confirmable > 1 ? 's' : ''}` : 'recepción'}
-              </button>
-            </>
-          )}
-        </div>
-      </div>
-
-      <ManualEntryWizard onComplete={action} />
-
-      <ReceptionCamera
-        open={cameraOpen}
-        onClose={() => setCameraOpen(false)}
-        onResult={applyResult}
-        onError={setError}
-        onNativeFallback={() => openNativeCamera(photoInputRef.current)}
-      />
-    </>
-  )
-}
-
-function Suppliers({ action, suppliers }: { action: (m: string) => void; suppliers: AppMetrics['suppliers'] }) {
-  return (
-    <>
-      <Heading eyebrow="PROCEDENCIA" title="Proveedores" subtitle="Cada producto puede tener varias procedencias con coste y margen propios" action={() => action('Formulario de proveedor abierto')} actionLabel="Añadir proveedor" />
-      <div className="grid gap-4 lg:grid-cols-2 xl:grid-cols-3">
-        {suppliers.map((s) => (
-          <div key={s.name} className="overflow-hidden rounded-2xl border bg-white">
-            <div className="relative h-32">
-              <img src={getSupplierImage(s.name)} alt={s.name} className="h-full w-full object-cover" />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
-              <button onClick={() => action(`Opciones de ${s.name}`)} aria-label="Más opciones" className="absolute right-3 top-3 rounded-lg bg-white/90 p-1.5 backdrop-blur-sm">
-                <MoreHorizontal className="size-5 text-[#597360]" />
-              </button>
-              <div className="absolute bottom-3 left-3 flex size-10 items-center justify-center rounded-xl bg-white/95 text-[#316742] shadow-sm">
-                <Truck className="size-5" />
-              </div>
-            </div>
-            <div className="p-5">
-              <h3 className="font-semibold">{s.name}</h3>
-              <p className="mt-1 text-sm text-[#66746a]">
-                {s.city} · {s.references} referencia{s.references !== 1 ? 's' : ''}
-              </p>
-              <p className="mt-3 text-xs text-[#9aa59c]">{s.updated}</p>
-            </div>
-          </div>
-        ))}
+      <div id="manual-entry-wizard">
+        <ManualEntryWizard key={`${manualQuery}-${manualNonce}`} onComplete={action} initialQuery={manualQuery} />
       </div>
     </>
   )
@@ -1524,7 +1319,14 @@ function Locations({ action, locations }: { action: (m: string) => void; locatio
               </button>
             </div>
             <div className="p-5">
-              <h3 className="font-semibold">{l.name}</h3>
+              <div className="flex items-start justify-between gap-3">
+                <h3 className="font-semibold">{l.name}</h3>
+                <span className={`rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  l.zone === 'Cuarentena' ? 'bg-[#ede8f4] text-[#7b6b9e]' : l.zone === 'Exterior' ? 'bg-[#e4f1e5] text-[#316742]' : 'bg-[#f0f4f0] text-[#597360]'
+                }`}>
+                  {l.zone}
+                </span>
+              </div>
               <p className="mt-1 text-sm text-[#829187]">{l.description}</p>
               <p className="mt-4 text-xl font-semibold">
                 {l.items} referencias · {l.units.toLocaleString('es-ES')} uds.

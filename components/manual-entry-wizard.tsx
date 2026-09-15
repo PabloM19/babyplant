@@ -1,12 +1,13 @@
 'use client'
 
-import { useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { Check, ChevronLeft, ChevronRight, Leaf, Search, Sparkles } from 'lucide-react'
 import { products, type Product } from '@/lib/demo-data'
 import { getProductImage } from '@/lib/media'
 
 type ManualEntryWizardProps = {
   onComplete: (message: string) => void
+  initialQuery?: string
 }
 
 const CATEGORIES = [...new Set(products.map((p) => p.category))]
@@ -74,9 +75,9 @@ function exactProduct(query: string) {
   return products.find((p) => normalize(p.name) === q) ?? null
 }
 
-export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
+export function ManualEntryWizard({ onComplete, initialQuery = '' }: ManualEntryWizardProps) {
   const [step, setStep] = useState(1)
-  const [query, setQuery] = useState('')
+  const [query, setQuery] = useState(initialQuery)
   const [selected, setSelected] = useState<Product | null>(null)
   const [isNew, setIsNew] = useState(false)
   const [suggestion, setSuggestion] = useState<Product | null>(null)
@@ -87,10 +88,20 @@ export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
   const [supplier, setSupplier] = useState(SUPPLIERS[0] ?? '')
   const [lot, setLot] = useState('')
   const [cost, setCost] = useState('')
+  const [barcode, setBarcode] = useState('')
+  const [phytosanitaryPassport, setPhytosanitaryPassport] = useState('')
   const [error, setError] = useState('')
 
   const speciesName = selected?.name ?? newName
   const totalSteps = 3
+
+  useEffect(() => {
+    if (!initialQuery) return
+    setQuery(initialQuery)
+    setSelected(null)
+    setIsNew(false)
+    setStep(1)
+  }, [initialQuery])
 
   const matches = useMemo(() => {
     const q = normalize(query)
@@ -112,7 +123,11 @@ export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
     setError('')
     setLocation(product.location)
     setCategory(product.category)
-    setCost(product.procedencias[0]?.cost.replace(' €', '') ?? '')
+    const origin = product.procedencias[0]
+    setCost(origin?.cost.replace(' €', '') ?? '')
+    setLot(origin?.lot ?? '')
+    setBarcode(origin?.barcode ?? '')
+    setPhytosanitaryPassport(origin?.phytosanitaryPassport ?? '')
   }
 
   const goNextFromSpecies = () => {
@@ -196,6 +211,8 @@ export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
     setQuantity('12')
     setLot('')
     setCost('')
+    setBarcode('')
+    setPhytosanitaryPassport('')
     setError('')
     setCategory(CATEGORIES[0] ?? 'Plantas de exterior')
     setLocation(LOCATIONS[0] ?? 'Invernadero A')
@@ -214,12 +231,12 @@ export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
   }
 
   return (
-    <section className="mt-5 overflow-hidden rounded-2xl border bg-white">
-      <div className="border-b border-[#edf0ed] px-5 py-5 sm:px-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#75917b]">Sin albarán</p>
+    <section className="overflow-hidden rounded-2xl border border-[#e4e4ea] bg-white">
+      <div className="border-b border-[#ececf1] bg-[#f7f6fa] px-5 py-5 sm:px-6">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7b6b9e]">Sin documento</p>
         <h2 className="mt-1 text-lg font-semibold text-[#1e3d28]">Registrar entrada a mano</h2>
         <p className="mt-1 text-sm text-[#66746a]">
-          Si no vas a escanear un documento, elige una especie del catálogo o da de alta una nueva en tres pasos.
+          Si no vas a escanear nada, elige una especie del catálogo o da de alta una nueva en tres pasos.
         </p>
       </div>
 
@@ -336,7 +353,21 @@ export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
               </select>
             </Field>
             <Field label="Proveedor">
-              <select value={supplier} onChange={(e) => setSupplier(e.target.value)} className={inputClass}>
+              <select
+                value={supplier}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setSupplier(next)
+                  const origin = selected?.procedencias.find((pr) => pr.supplier === next)
+                  if (origin) {
+                    setCost(origin.cost.replace(' €', ''))
+                    setLot(origin.lot)
+                    setBarcode(origin.barcode ?? '')
+                    setPhytosanitaryPassport(origin.phytosanitaryPassport ?? '')
+                  }
+                }}
+                className={inputClass}
+              >
                 {SUPPLIERS.map((s) => (
                   <option key={s}>{s}</option>
                 ))}
@@ -347,6 +378,17 @@ export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
             </Field>
             <Field label="Coste unitario (€)">
               <input value={cost} onChange={(e) => setCost(e.target.value)} placeholder="4,80" className={inputClass} />
+            </Field>
+            <Field label="Código de barras">
+              <input value={barcode} onChange={(e) => setBarcode(e.target.value)} placeholder="8437000142001" className={inputClass} />
+            </Field>
+            <Field label="Pasaporte fitosanitario">
+              <input
+                value={phytosanitaryPassport}
+                onChange={(e) => setPhytosanitaryPassport(e.target.value)}
+                placeholder="ES-46-VL-0142"
+                className={inputClass}
+              />
             </Field>
           </div>
         )}
@@ -374,6 +416,12 @@ export function ManualEntryWizard({ onComplete }: ManualEntryWizardProps) {
               </li>
               <li>
                 <b>Coste:</b> {cost ? `${cost} €` : 'Sin indicar'}
+              </li>
+              <li>
+                <b>Código de barras:</b> {barcode || 'Sin indicar'}
+              </li>
+              <li>
+                <b>Pasaporte fitosanitario:</b> {phytosanitaryPassport || 'Sin indicar'}
               </li>
             </ul>
             <p className="mt-3 text-xs text-[#9aa59c]">Demo: no se guarda en servidor. Sirve para recorrer el flujo de recepción manual.</p>

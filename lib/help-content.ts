@@ -84,9 +84,8 @@ export const helpTopics: HelpTopic[] = [
     summary: 'Consulta productos, filtra por estado y despliega lotes por proveedor.',
     paragraphs: [
       'Existencias separa la ficha de producto de sus procedencias. Un mismo artículo puede tener varios lotes con costes y márgenes distintos.',
-      'Puedes buscar por nombre, código Eiviplant o proveedor, y filtrar por En stock, Stock bajo o Agotado.',
-      'La vista de tarjetas es ideal para revisar el catálogo visualmente; la vista lista permite comparar muchas referencias de un vistazo.',
-      'Al desplegar lotes ves proveedor, referencia, coste, margen y desglose de unidades por procedencia.',
+      'Puedes buscar por nombre, código Eiviplant, código de barras, pasaporte o proveedor, y filtrar por estado de stock y por zona (Interior, Exterior, Cuarentena).',
+      'Al desplegar lotes ves proveedor, referencia, código de barras, pasaporte fitosanitario, coste, margen y desglose de unidades por procedencia.',
       'La selección múltiple permite exportar un subconjunto del catálogo.',
     ],
     tips: [
@@ -118,6 +117,7 @@ export const helpTopics: HelpTopic[] = [
     paragraphs: [
       'Una reserva resta unidades disponibles pero mantiene el stock físico hasta que el cliente recoge o se cancela.',
       'Las reservas activas muestran cliente, cantidad, fecha de vencimiento y notas operativas.',
+      'Puedes crear una reserva nueva eligiendo producto, cantidad, cliente y fecha de vencimiento; no se puede reservar más de lo disponible.',
       'Las vencidas requieren seguimiento comercial; las retiradas confirman que el material ya salió del garden.',
       'Los indicadores superiores resumen activas, por vencer y retiradas en el mes.',
     ],
@@ -129,28 +129,27 @@ export const helpTopics: HelpTopic[] = [
   {
     id: 'recepcion',
     section: 'Recepción',
-    title: 'Recepción de albaranes',
-    summary: 'Registra entradas escaneando PDF o foto con OCR y confirma líneas detectadas.',
+    title: 'Recepción de documentos',
+    summary: 'Registra entradas leyendo factura, albarán, pedido o ticket en PDF, foto o cámara.',
     paragraphs: [
-      'Recepción agiliza la entrada de mercancía leyendo albaranes en PDF o capturando una foto del documento.',
-      'El OCR propone líneas de producto, cantidades y referencias para revisar antes de aplicar el stock.',
-      'Puedes usar cámara en dispositivo móvil o subir un archivo desde el ordenador.',
-      'Tras confirmar, las unidades se suman al stock físico y quedan vinculadas a la procedencia del proveedor.',
+      'Recepción es un asistente de tres pasos: tipo de documento, cómo lo lees (cámara, archivo o ejemplo) y revisión de líneas.',
+      'Los PDF oficiales son solo una vía de prueba, aparte de la captura real. Si una línea no está en catálogo, puedes crear la ficha a mano.',
+      'Tras confirmar, las unidades se suman al stock.',
     ],
     tips: [
-      'Mejora la lectura OCR con buena luz y albarán plano, sin sombras sobre las líneas.',
-      'Comprueba siempre el proveedor y el número de lote antes de confirmar la recepción.',
+      'Si estás probando el lector, elige «Probar ejemplo» en el segundo paso. No se mezcla con la cámara.',
+      'En foto u OCR usa buena luz y el documento plano, sin sombras sobre las líneas.',
     ],
   },
   {
     id: 'proveedores',
     section: 'Proveedores',
     title: 'Proveedores y procedencias',
-    summary: 'Origen del stock, referencias activas y última actualización por proveedor.',
+    summary: 'Ficha de cada vivero: contacto comercial, email de albaranes y tabla libre de datos extra.',
     paragraphs: [
       'Cada proveedor agrupa las procedencias desde las que compras distintos productos o lotes.',
-      'La ficha resume ciudad, número de referencias en catálogo y cuándo se actualizó por última vez.',
-      'Desde Existencias puedes bajar al detalle de lotes; desde aquí tienes la visión por origen comercial.',
+      'Abre la ficha para llamar o escribir al comercial y al email de administración sin salir del panel.',
+      'La tabla libre guarda datos operativos (día de entrega, pedido mínimo, formato de albarán) que el equipo consulta a mitad de tarea.',
     ],
     tips: [
       'Compara referencias por proveedor para detectar concentración de compras en pocos origenes.',
@@ -164,7 +163,7 @@ export const helpTopics: HelpTopic[] = [
     summary: 'Dónde está el stock: invernaderos, almacén y cuarentena fitosanitaria.',
     paragraphs: [
       'Las ubicaciones organizan el stock por espacio físico del garden center.',
-      'Cada tarjeta indica cuántas referencias distintas hay y el total de unidades almacenadas.',
+      'Cada tarjeta indica zona (Interior, Exterior o Cuarentena), cuántas referencias hay y el total de unidades.',
       'La cuarentena fitosanitaria concentra stock inmovilizado pendiente de revisión.',
     ],
     tips: [
@@ -280,8 +279,8 @@ export const tutorialSteps: TutorialStep[] = [
     description: 'Consulta cada producto con foto, código Eiviplant y desglose de unidades.',
     bullets: [
       'Alterna entre vista tarjetas y lista según el tipo de revisión',
-      'Despliega lotes para ver proveedor, coste, margen y fechas',
-      'Filtra por estado de stock o busca por proveedor',
+      'Despliega lotes para ver proveedor, código de barras y pasaporte',
+      'Filtra por estado de stock o por zona (interior, exterior, cuarentena)',
     ],
   },
   {
@@ -301,7 +300,7 @@ export const tutorialSteps: TutorialStep[] = [
     title: 'Compromisos con clientes',
     description: 'Las reservas bloquean disponibilidad hasta recogida o cancelación.',
     bullets: [
-      'Consulta cliente, cantidad y fecha de vencimiento',
+      'Crea una reserva nueva con producto, cantidad, cliente y vencimiento',
       'Prioriza las reservas por vencer para liberar stock',
       'Las retiradas confirman material ya entregado',
     ],
@@ -310,11 +309,11 @@ export const tutorialSteps: TutorialStep[] = [
     id: 'recepcion',
     section: 'Recepción',
     title: 'Entrada de mercancía',
-    description: 'Digitaliza albaranes con OCR para cargar stock más rápido y con menos errores.',
+    description: 'Digitaliza facturas, albaranes, pedidos o tickets para cargar stock más rápido.',
     bullets: [
-      'Sube PDF o captura foto del albarán',
-      'Revisa las líneas detectadas antes de confirmar',
-      'Cada entrada genera procedencia y movimiento trazable',
+      'Elige el tipo de documento (albarán, factura, pedido, ticket…)',
+      'Decide si usas cámara, un archivo o un PDF de ejemplo',
+      'Revisa las líneas y crea ficha si el producto no está en catálogo',
     ],
   },
   {
@@ -323,8 +322,8 @@ export const tutorialSteps: TutorialStep[] = [
     title: 'Origen del stock',
     description: 'Visualiza de quién compras cada referencia y cuántos productos tienes por proveedor.',
     bullets: [
-      'Cada tarjeta resume ciudad y referencias activas',
-      'Conecta con lotes en Existencias para ver costes',
+      'Abre la ficha para ver teléfono y email de albaranes',
+      'Completa la tabla libre con entregas, mínimos u otras notas',
       'Útil para negociar y planificar pedidos',
     ],
   },

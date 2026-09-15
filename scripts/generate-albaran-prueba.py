@@ -13,7 +13,7 @@ TEMPLATE = ROOT / "public" / "albaran-plantilla-limpia.pdf"
 OUTPUT = ROOT / "public" / "albaran-prueba-eiviplant.pdf"
 
 LINES = [
-    ("Rosa mini roja", 20, "ud", "2,40", "48,00"),
+    ("Rosal mini rojo", 20, "ud", "2,40", "48,00"),
     ("Monstera Deliciosa", 15, "ud", "48,00", "720,00"),
     ("Geranio rojo", 30, "ud", "1,80", "54,00"),
     ("Olivo miniatura", 12, "ud", "36,00", "432,00"),

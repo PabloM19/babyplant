@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Camera, X } from 'lucide-react'
 import { parseAlbaranCapture, type ParsedAlbaran } from '@/lib/parse-albaran-image'
+import type { ParseHints } from '@/lib/document-catalog'
 
 type Props = {
   open: boolean
@@ -10,9 +11,10 @@ type Props = {
   onResult: (result: ParsedAlbaran, sourceLabel: string) => void
   onError: (message: string) => void
   onNativeFallback?: () => void
+  hints?: ParseHints
 }
 
-export function ReceptionCamera({ open, onClose, onResult, onError, onNativeFallback }: Props) {
+export function ReceptionCamera({ open, onClose, onResult, onError, onNativeFallback, hints }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [ready, setReady] = useState(false)
@@ -80,10 +82,10 @@ export function ReceptionCamera({ open, onClose, onResult, onError, onNativeFall
       if (!ctx) throw new Error('canvas')
 
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const result = await parseAlbaranCapture(canvas)
+      const result = await parseAlbaranCapture(canvas, hints)
 
       if (result.lines.length === 0) {
-        onError('No se detectaron líneas. Acerca el albarán, mejora la luz y vuelve a capturar.')
+        onError('No se detectaron líneas. Acerca el documento, mejora la luz y vuelve a capturar.')
         return
       }
 
@@ -94,7 +96,7 @@ export function ReceptionCamera({ open, onClose, onResult, onError, onNativeFall
     } finally {
       setScanning(false)
     }
-  }, [ready, scanning, onClose, onError, onResult])
+  }, [ready, scanning, onClose, onError, onResult, hints])
 
   if (!open) return null
 
@@ -104,7 +106,7 @@ export function ReceptionCamera({ open, onClose, onResult, onError, onNativeFall
         <div className="flex items-center justify-between border-b px-5 py-4">
           <div className="flex items-center gap-2">
             <Camera className="size-5 text-[#316742]" />
-            <h3 className="font-semibold">Escanear albarán</h3>
+            <h3 className="font-semibold">Escanear documento</h3>
           </div>
           <button type="button" onClick={onClose} aria-label="Cerrar cámara">
             <X className="size-5 text-[#829187]" />
@@ -122,7 +124,7 @@ export function ReceptionCamera({ open, onClose, onResult, onError, onNativeFall
         </div>
 
         <div className="space-y-3 px-5 py-4">
-          <p className="text-xs text-[#829187]">Encuadra la tabla del albarán dentro del recuadro. Funciona con el albarán impreso o en pantalla.</p>
+          <p className="text-xs text-[#829187]">Encuadra la tabla del documento. Sirve para ticket, factura, pedido o albarán, en papel o en pantalla.</p>
           <button
             type="button"
             disabled={!ready || scanning}
