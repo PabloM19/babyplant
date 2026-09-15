@@ -183,31 +183,35 @@
   }
 }
 
-.ep-scroll {
+* {
   scrollbar-width: thin;
   scrollbar-color: #8bb795 transparent;
-  overscroll-behavior: contain;
 }
 
-.ep-scroll::-webkit-scrollbar {
+*::-webkit-scrollbar {
   width: 7px;
+  height: 7px;
 }
 
-.ep-scroll::-webkit-scrollbar-track {
-  margin: 10px 4px;
+*::-webkit-scrollbar-track {
+  margin: 4px;
   background: transparent;
 }
 
-.ep-scroll::-webkit-scrollbar-thumb {
+*::-webkit-scrollbar-thumb {
   background: linear-gradient(180deg, #a8d0b0, #316742);
   border-radius: 999px;
   border: 2px solid transparent;
   background-clip: padding-box;
 }
 
-.ep-scroll::-webkit-scrollbar-thumb:hover {
+*::-webkit-scrollbar-thumb:hover {
   background: #316742;
   border: 0;
+}
+
+.ep-scroll {
+  overscroll-behavior: contain;
 }
 
 select:not([multiple]):not([size]) {
