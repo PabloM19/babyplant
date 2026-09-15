@@ -14,15 +14,9 @@ export type ParsedAlbaran = {
   rawText: string
 }
 
-/** Nombres del catálogo demo; el parser los usa para cruzar líneas del PDF. */
-export const CATALOG_PRODUCT_NAMES = [
-  'Rosa mini roja',
-  'Blaukorn Compo 5 kg',
-  'Monstera Deliciosa',
-  'Maceta clásica terracota 30 cm',
-  'Sansevieria trifasciata',
-  'Olivo miniatura',
-] as const
+import { CATALOG_PRODUCT_NAMES } from '@/lib/demo-data'
+
+export { CATALOG_PRODUCT_NAMES }
 
 const NOISE = new Set([
   'Albarán',

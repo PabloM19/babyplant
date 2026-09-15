@@ -47,6 +47,16 @@
 
 :root {
   color-scheme: light;
+  --ep-primary: #316742;
+  --ep-primary-hover: #285a37;
+  --ep-sidebar: #dcefe0;
+  --ep-bg: #fbfcfa;
+  --ep-accent-soft: #e4f1e5;
+  --ep-muted: #829187;
+  --ep-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --ep-font-scale: 1;
+  --ep-radius: 1rem;
+  --ep-chip-radius: 9999px;
   --background: oklch(0.96 0.012 140);
   --foreground: oklch(0.24 0.035 145);
   --card: oklch(1 0 0);
@@ -159,6 +169,80 @@
   }
   body {
     @apply bg-background text-foreground;
+    font-family: var(--ep-font-family);
+    font-size: calc(16px * var(--ep-font-scale));
     -webkit-tap-highlight-color: transparent;
   }
+
+  html[data-density='compact'] .ep-density-pad {
+    @apply px-4 py-5 md:px-5 md:py-6;
+  }
+
+  html[data-density='spacious'] .ep-density-pad {
+    @apply px-6 py-9 md:px-9 md:py-10;
+  }
+}
+
+.ep-scroll {
+  scrollbar-width: thin;
+  scrollbar-color: #8bb795 transparent;
+  overscroll-behavior: contain;
+}
+
+.ep-scroll::-webkit-scrollbar {
+  width: 7px;
+}
+
+.ep-scroll::-webkit-scrollbar-track {
+  margin: 10px 4px;
+  background: transparent;
+}
+
+.ep-scroll::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #a8d0b0, #316742);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+.ep-scroll::-webkit-scrollbar-thumb:hover {
+  background: #316742;
+  border: 0;
+}
+
+select:not([multiple]):not([size]) {
+  appearance: none;
+  -webkit-appearance: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'><path stroke='%23829187' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M4 6l4 4 4-4'/></svg>");
+  background-position: right 0.85rem center;
+  background-repeat: no-repeat;
+  background-size: 0.9rem 0.9rem;
+  padding-right: 2.35rem;
+}
+
+input[type='checkbox'] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 1.5px solid #c5d0c7;
+  border-radius: 5px;
+  background-color: #fff;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: 0.7rem;
+}
+
+input[type='checkbox']:checked {
+  border-color: var(--ep-primary, #316742);
+  background-color: var(--ep-primary, #316742);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 16 16'><path stroke='white' stroke-linecap='round' stroke-linejoin='round' stroke-width='2.4' d='M3.5 8.2l3 3 6-6.5'/></svg>");
+}
+
+input[type='checkbox']:focus-visible {
+  outline: 2px solid #8bb795;
+  outline-offset: 2px;
 }
